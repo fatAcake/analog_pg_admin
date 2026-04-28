@@ -94,11 +94,6 @@ function SqlQueryEditor({ connectionString }) {
         </div>
       )}
 
-      {result && result.rowsAffected !== undefined && (
-        <div className="query-result">
-          <p>Затронуто строк: {result.rowsAffected}</p>
-        </div>
-      )}
     </div>
   );
 }

@@ -403,22 +403,7 @@ public class DatabaseService : IDatabaseService
         await cmd.ExecuteNonQueryAsync();
     }
     
-    private NpgsqlDbType? GetNpgsqlDbType(Type type)
-    {
-        if (type == typeof(int) || type == typeof(long) || type == typeof(short))
-            return NpgsqlDbType.Integer;
-        if (type == typeof(string))
-            return NpgsqlDbType.Text;
-        if (type == typeof(bool))
-            return NpgsqlDbType.Boolean;
-        if (type == typeof(DateTime))
-            return NpgsqlDbType.Timestamp;
-        if (type == typeof(decimal) || type == typeof(double) || type == typeof(float))
-            return NpgsqlDbType.Numeric;
-        if (type == typeof(byte[]))
-            return NpgsqlDbType.Bytea;
-        return null;
-    }
+ 
 
     public async Task DeleteDataAsync(string connectionString, string schemaName, string tableName, string whereClause)
     {
