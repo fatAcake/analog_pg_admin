@@ -1,97 +1,148 @@
+```
 # Compiled and build artifacts
-*.pyc
-__pycache__/
-*.o
-*.obj
 *.exe
 *.dll
 *.so
-*.class
+*.a
+*.obj
 *.out
+bin/
+obj/
+out/
 
 # Dependencies
 node_modules/
-venv/
-.venv/
-.env
-.env.local
-.env.*
-
-# Build directories
-dist/
-build/
-target/
-
-# Python specific
-*.pyc
-__pycache__/
-*.pyo
-*.pyd
-.Python
-*.so
-.Python
-*.egg-info/
-.eggs/
-.mypy_cache/
-.pytest_cache/
-.coverage
-coverage/
+packages/
 
 # Logs and temp files
 *.log
 *.tmp
 *.swp
-*.swo
+
+# Environment
+.env
+.env.local
+*.env.*
 
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
+*.userprefs
 
-# System files
-.DS_Store
-Thumbs.db
+# Build outputs
+dist/
+build/
+target/
+release/
+debug/
 
-# Compression archives
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
-
-# Coverage reports
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
 coverage/
 htmlcov/
+.nox/
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
 
-# Gradle
+# Node.js specific
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+node_modules/
+jspm_packages/
+typings/
+.nyc_output
+coverage/
+*.lcov
+
+# Java specific
+*.class
+*.jar
+*.war
+*.ear
+target/
 .gradle/
+build/
+!gradle-wrapper.properties
 
-# C#
-*.dll
-*.exe
-*.pdb
-*.user
-*.sln.docstates
+# C# specific
+*.sln
+*.csproj.user
 *.userosscache
 *.suo
-.vs/
-bin/
-obj/
+*.user
+*.aps
+*.pch
+*.vspscc
+*.vssscc
+*_i.c
+*_p.c
+*.ilk
+*.meta
+*.pidb
+*.svclog
+*.pdb
+*.mdb
+*.exe
+*.o
+*.a
+*.obj
+*.so
+*.dll
+*.nupkg
+[TestApp].dll
+[Release|Debug]/
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.[Rr]e[Ss]harper.*
+[Tt]est[Rr]esult*/
+[Tt]est[Rr]esults/
+Build/
+[Bb]in/
+[Oo]bj/
+[Ll]og[s]/
+[Ll]ogs/
+[Ll]ocal[Cc]onf[Ii]g/
+[Dd]eploy/
+[Pp]ackages/
+[Tt]emp/
+[Tt]emporary[Tt]est[Ff]olders/
+*.VisualState.xml
+*.docstates
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+_x00xx/
+*.VC.db
+*.VC.VC.opendb
+[Dd]ebugPS/
+[Rr]eleasePS/
+[Ii]ntermediate/[Dd]ebug/
+[Ii]ntermediate/[Rr]elease/
+[Bb]uild/[Ll]og/
+[Aa]pp_[Ss]tart_[Uu]p_[Oo]bject.cs
+[Aa]pp_[Gg]enerated_[Ss]erialization_[Aa]ssembly.cs
+*.userprefs
+*.lock.json
+project.lock.json
+project.fragment.lock.json
+artifacts/
+.cloudbuild/
+.gitattributes
+.gitignore
+.editorconfig
+.stylecop
+```
