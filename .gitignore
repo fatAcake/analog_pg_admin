@@ -1,4 +1,3 @@
-```
 # Compiled and build artifacts
 *.pyc
 __pycache__/
@@ -22,7 +21,21 @@ venv/
 dist/
 build/
 target/
+
+# Python specific
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+.Python
 *.egg-info/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage/
 
 # Logs and temp files
 *.log
@@ -40,28 +53,7 @@ target/
 .DS_Store
 Thumbs.db
 
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# Python specific
-*.pyc
-__pycache__/
-*.pyo
-*.pyd
-.Python
-*.so
-.Python
-*.egg-info/
-.eggs/
-.tox/
-.coverage
-htmlcov/
-.pytest_cache/
-.mypy_cache/
-
-# Compressed files
+# Compression archives
 *.zip
 *.gz
 *.tar
@@ -84,4 +76,22 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
-```
+
+# Coverage reports
+coverage/
+htmlcov/
+
+# Gradle
+.gradle/
+
+# C#
+*.dll
+*.exe
+*.pdb
+*.user
+*.sln.docstates
+*.userosscache
+*.suo
+.vs/
+bin/
+obj/
