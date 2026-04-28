@@ -97,7 +97,7 @@ public class DatabaseService : IDatabaseService
         
         if (!string.IsNullOrEmpty(schemaName))
         {
-            sql += " AND table_schema = @schemaName";
+            sql += " AND table_schema = $1";
         }
         
         sql += " ORDER BY table_schema, table_name";
@@ -105,7 +105,7 @@ public class DatabaseService : IDatabaseService
         await using var cmd = new NpgsqlCommand(sql, conn);
         if (!string.IsNullOrEmpty(schemaName))
         {
-            cmd.Parameters.AddWithValue("schemaName", schemaName);
+            cmd.Parameters.AddWithValue(schemaName);
         }
         
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -151,11 +151,11 @@ public class DatabaseService : IDatabaseService
         await using var cmd = new NpgsqlCommand(@"
             SELECT column_name, data_type, is_nullable, column_default
             FROM information_schema.columns
-            WHERE table_schema = @schemaName AND table_name = @tableName
+            WHERE table_schema = $1 AND table_name = $2
             ORDER BY ordinal_position", conn);
         
-        cmd.Parameters.AddWithValue("schemaName", schemaName);
-        cmd.Parameters.AddWithValue("tableName", tableName);
+        cmd.Parameters.AddWithValue(schemaName);
+        cmd.Parameters.AddWithValue(tableName);
         
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -289,7 +289,7 @@ public class DatabaseService : IDatabaseService
         await conn.OpenAsync();
         
         var columns = string.Join(", ", data.Keys.Select(k => $"\"{k}\""));
-        var parameters = string.Join(", ", data.Keys.Select((k, i) => $"@p{i + 1}"));
+        var parameters = string.Join(", ", Enumerable.Range(1, data.Count).Select(i => $"${i}"));
         var values = data.Values.ToArray();
         
         var sql = $"INSERT INTO \"{schemaName}\".\"{tableName}\" ({columns}) VALUES ({parameters})";
@@ -305,7 +305,7 @@ public class DatabaseService : IDatabaseService
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
         
-        var setClause = string.Join(", ", data.Keys.Select((k, i) => $"\"{k}\" = @p{i + 1}"));
+        var setClause = string.Join(", ", data.Keys.Select((k, i) => $"\"{k}\" = ${i + 1}"));
         var values = data.Values.ToArray();
         
         var sql = $"UPDATE \"{schemaName}\".\"{tableName}\" SET {setClause} WHERE {whereClause}";
@@ -334,6 +334,8 @@ public class DatabaseService : IDatabaseService
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
         
+        var tableFullName = $"\"{schemaName}\".\"{tableName}\"";
+        
         await using var cmd = new NpgsqlCommand(@"
             SELECT a.attname
             FROM pg_index i
@@ -341,7 +343,7 @@ public class DatabaseService : IDatabaseService
             WHERE i.indrelid = $1::regclass AND i.indisprimary", 
             conn);
         
-        cmd.Parameters.AddWithValue($"\"{schemaName}\".\"{tableName}\"");
+        cmd.Parameters.AddWithValue(tableFullName);
         
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -407,16 +409,16 @@ public class DatabaseService : IDatabaseService
                 ON ccu.constraint_name = tc.constraint_name
                 AND ccu.table_schema = tc.table_schema
             WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND ccu.table_schema = @schemaName
-            AND ccu.table_name = @tableName
-            AND ccu.column_name = ANY(@pkColumns)";
+            AND ccu.table_schema = $1
+            AND ccu.table_name = $2
+            AND ccu.column_name = ANY($3)";
 
         await using (var cmd = new NpgsqlCommand(fkQuery, conn))
         {
-            cmd.Parameters.AddWithValue("@schemaName", schemaName);
-            cmd.Parameters.AddWithValue("@tableName", tableName);
+            cmd.Parameters.AddWithValue(schemaName);
+            cmd.Parameters.AddWithValue(tableName);
             var pkColumnNames = pkColumns.Select(c => c.Name).ToArray();
-            cmd.Parameters.AddWithValue("@pkColumns", pkColumnNames);
+            cmd.Parameters.AddWithValue(pkColumnNames);
             
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -426,11 +428,11 @@ public class DatabaseService : IDatabaseService
                 var refColumn = reader.GetString(2);
                 
                 // Check if there are actually referencing rows
-                var checkSql = $"SELECT 1 FROM \"{refSchema}\".\"{refTable}\" WHERE \"{refColumn}\" = ANY(@values) LIMIT 1";
+                var checkSql = $"SELECT 1 FROM \"{refSchema}\".\"{refTable}\" WHERE \"{refColumn}\" = ANY($1) LIMIT 1";
                 
                 await using (var checkCmd = new NpgsqlCommand(checkSql, conn))
                 {
-                    checkCmd.Parameters.AddWithValue("@values", pkValues.ToArray());
+                    checkCmd.Parameters.AddWithValue(pkValues.ToArray());
                     var checkResult = await checkCmd.ExecuteScalarAsync();
                     if (checkResult != null)
                     {
@@ -464,8 +466,8 @@ public class DatabaseService : IDatabaseService
                 ON ccu.constraint_name = tc.constraint_name
                 AND ccu.table_schema = tc.table_schema
             WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND ccu.table_schema = @schemaName
-            AND ccu.table_name = @tableName";
+            AND ccu.table_schema = $1
+            AND ccu.table_name = $2";
 
         var pkColumns = await GetPrimaryKeyColumnsAsync(connectionString, schemaName, tableName);
         if (pkColumns.Count == 0)
@@ -503,8 +505,8 @@ public class DatabaseService : IDatabaseService
 
         await using (var cmd = new NpgsqlCommand(fkQuery, conn))
         {
-            cmd.Parameters.AddWithValue("@schemaName", schemaName);
-            cmd.Parameters.AddWithValue("@tableName", tableName);
+            cmd.Parameters.AddWithValue(schemaName);
+            cmd.Parameters.AddWithValue(tableName);
             
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -514,11 +516,11 @@ public class DatabaseService : IDatabaseService
                 var refColumn = reader.GetString(2);
                 var referencedColumn = reader.GetString(3);
                 
-                var deleteSql = $"DELETE FROM \"{refSchema}\".\"{refTable}\" WHERE \"{refColumn}\" = ANY(@values)";
+                var deleteSql = $"DELETE FROM \"{refSchema}\".\"{refTable}\" WHERE \"{refColumn}\" = ANY($1)";
                 
                 await using (var deleteCmd = new NpgsqlCommand(deleteSql, conn))
                 {
-                    deleteCmd.Parameters.AddWithValue("@values", pkValues.ToArray());
+                    deleteCmd.Parameters.AddWithValue(pkValues.ToArray());
                     await deleteCmd.ExecuteNonQueryAsync();
                 }
             }
