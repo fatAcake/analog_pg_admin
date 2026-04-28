@@ -312,12 +312,17 @@ public class DatabaseService : IDatabaseService
         foreach (var kvp in data)
         {
             setParts.Add($"\"{kvp.Key}\" = ${paramIndex}");
-            var param = new NpgsqlParameter($"p{paramIndex}", kvp.Value ?? DBNull.Value);
+            var value = kvp.Value ?? DBNull.Value;
+            var param = new NpgsqlParameter(value);
             
             // Попытка определить тип данных из значения
             if (kvp.Value != null && kvp.Value != DBNull.Value)
             {
-                param.NpgsqlDbType = GetNpgsqlDbType(kvp.Value.GetType());
+                var dbType = GetNpgsqlDbType(kvp.Value.GetType());
+                if (dbType.HasValue)
+                {
+                    param.NpgsqlDbType = dbType.Value;
+                }
             }
             
             parameters.Add(param);
@@ -480,7 +485,15 @@ public class DatabaseService : IDatabaseService
             
             await using (var checkCmd = new NpgsqlCommand(checkSql, conn))
             {
-                checkCmd.Parameters.AddWithValue(pkValues.ToArray());
+                // Преобразуем pkValues в массив конкретного типа для корректной передачи
+                var typedPkValues = pkValues.Select(v => 
+                {
+                    if (v is int || v is long || v is short)
+                        return Convert.ToInt32(v);
+                    return v;
+                }).ToArray();
+                
+                checkCmd.Parameters.AddWithValue(typedPkValues);
                 var checkResult = await checkCmd.ExecuteScalarAsync();
                 if (checkResult != null)
                 {
@@ -573,7 +586,15 @@ public class DatabaseService : IDatabaseService
             
             await using (var deleteCmd = new NpgsqlCommand(deleteSql, conn))
             {
-                deleteCmd.Parameters.AddWithValue(pkValues.ToArray());
+                // Преобразуем pkValues в массив конкретного типа для корректной передачи
+                var typedPkValues = pkValues.Select(v => 
+                {
+                    if (v is int || v is long || v is short)
+                        return Convert.ToInt32(v);
+                    return v;
+                }).ToArray();
+                
+                deleteCmd.Parameters.AddWithValue(typedPkValues);
                 await deleteCmd.ExecuteNonQueryAsync();
             }
         }
