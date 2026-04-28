@@ -105,7 +105,7 @@ public class DatabaseService : IDatabaseService
         await using var cmd = new NpgsqlCommand(sql, conn);
         if (!string.IsNullOrEmpty(schemaName))
         {
-            cmd.Parameters.AddWithValue("p1", schemaName);
+            cmd.Parameters.AddWithValue(schemaName);
         }
         
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -154,8 +154,8 @@ public class DatabaseService : IDatabaseService
             WHERE table_schema = $1 AND table_name = $2
             ORDER BY ordinal_position", conn);
         
-        cmd.Parameters.AddWithValue("p1", schemaName);
-        cmd.Parameters.AddWithValue("p2", tableName);
+        cmd.Parameters.AddWithValue(schemaName);
+        cmd.Parameters.AddWithValue(tableName);
         
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -378,7 +378,7 @@ public class DatabaseService : IDatabaseService
             WHERE i.indrelid = $1::regclass AND i.indisprimary", 
             conn);
         
-        cmd.Parameters.AddWithValue("p1", tableFullName);
+        cmd.Parameters.AddWithValue(tableFullName);
         
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -452,10 +452,10 @@ public class DatabaseService : IDatabaseService
         var foreignKeys = new List<(string Schema, string Table, string Column)>();
         await using (var cmd = new NpgsqlCommand(fkQuery, conn))
         {
-            cmd.Parameters.AddWithValue("p1", schemaName);
-            cmd.Parameters.AddWithValue("p2", tableName);
+            cmd.Parameters.AddWithValue(schemaName);
+            cmd.Parameters.AddWithValue(tableName);
             var pkColumnNames = pkColumns.Select(c => c.Name).ToArray();
-            cmd.Parameters.AddWithValue("p3", pkColumnNames);
+            cmd.Parameters.AddWithValue(pkColumnNames);
             
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -480,7 +480,7 @@ public class DatabaseService : IDatabaseService
             
             await using (var checkCmd = new NpgsqlCommand(checkSql, conn))
             {
-                checkCmd.Parameters.AddWithValue("p1", pkValues.ToArray());
+                checkCmd.Parameters.AddWithValue(pkValues.ToArray());
                 var checkResult = await checkCmd.ExecuteScalarAsync();
                 if (checkResult != null)
                 {
@@ -547,8 +547,8 @@ public class DatabaseService : IDatabaseService
         var foreignKeys = new List<(string Schema, string Table, string Column, string ReferencedColumn)>();
         await using (var cmd = new NpgsqlCommand(fkQuery, conn))
         {
-            cmd.Parameters.AddWithValue("p1", schemaName);
-            cmd.Parameters.AddWithValue("p2", tableName);
+            cmd.Parameters.AddWithValue(schemaName);
+            cmd.Parameters.AddWithValue(tableName);
             
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -573,7 +573,7 @@ public class DatabaseService : IDatabaseService
             
             await using (var deleteCmd = new NpgsqlCommand(deleteSql, conn))
             {
-                deleteCmd.Parameters.AddWithValue("p1", pkValues.ToArray());
+                deleteCmd.Parameters.AddWithValue(pkValues.ToArray());
                 await deleteCmd.ExecuteNonQueryAsync();
             }
         }
