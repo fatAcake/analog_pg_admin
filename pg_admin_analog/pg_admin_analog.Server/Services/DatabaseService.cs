@@ -305,15 +305,50 @@ public class DatabaseService : IDatabaseService
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
         
-        var setClause = string.Join(", ", data.Keys.Select((k, i) => $"\"{k}\" = ${i + 1}"));
-        var values = data.Values.ToArray();
+        var setParts = new List<string>();
+        var paramIndex = 1;
+        var parameters = new List<NpgsqlParameter>();
+        
+        foreach (var kvp in data)
+        {
+            setParts.Add($"\"{kvp.Key}\" = ${paramIndex}");
+            var param = new NpgsqlParameter($"p{paramIndex}", kvp.Value ?? DBNull.Value);
+            
+            // Попытка определить тип данных из значения
+            if (kvp.Value != null && kvp.Value != DBNull.Value)
+            {
+                param.NpgsqlDbType = GetNpgsqlDbType(kvp.Value.GetType());
+            }
+            
+            parameters.Add(param);
+            paramIndex++;
+        }
+        
+        var setClause = string.Join(", ", setParts);
         
         var sql = $"UPDATE \"{schemaName}\".\"{tableName}\" SET {setClause} WHERE {whereClause}";
         
         await using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddRange(values.Select(v => new NpgsqlParameter { Value = v ?? DBNull.Value }).ToArray());
+        cmd.Parameters.AddRange(parameters.ToArray());
         
         await cmd.ExecuteNonQueryAsync();
+    }
+    
+    private NpgsqlDbType? GetNpgsqlDbType(Type type)
+    {
+        if (type == typeof(int) || type == typeof(long) || type == typeof(short))
+            return NpgsqlDbType.Integer;
+        if (type == typeof(string))
+            return NpgsqlDbType.Text;
+        if (type == typeof(bool))
+            return NpgsqlDbType.Boolean;
+        if (type == typeof(DateTime))
+            return NpgsqlDbType.Timestamp;
+        if (type == typeof(decimal) || type == typeof(double) || type == typeof(float))
+            return NpgsqlDbType.Numeric;
+        if (type == typeof(byte[]))
+            return NpgsqlDbType.Bytea;
+        return null;
     }
 
     public async Task DeleteDataAsync(string connectionString, string schemaName, string tableName, string whereClause)
@@ -413,6 +448,8 @@ public class DatabaseService : IDatabaseService
             AND ccu.table_name = $2
             AND ccu.column_name = ANY($3)";
 
+        // Сначала читаем все FK в память, чтобы избежать конфликта команд
+        var foreignKeys = new List<(string Schema, string Table, string Column)>();
         await using (var cmd = new NpgsqlCommand(fkQuery, conn))
         {
             cmd.Parameters.AddWithValue("p1", schemaName);
@@ -423,22 +460,32 @@ public class DatabaseService : IDatabaseService
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                var refSchema = reader.GetString(0);
-                var refTable = reader.GetString(1);
-                var refColumn = reader.GetString(2);
-                
-                // Check if there are actually referencing rows
-                var checkSql = $"SELECT 1 FROM \"{refSchema}\".\"{refTable}\" WHERE \"{refColumn}\" = ANY($1) LIMIT 1";
-                
-                await using (var checkCmd = new NpgsqlCommand(checkSql, conn))
+                foreignKeys.Add((
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    reader.GetString(2)
+                ));
+            }
+        }
+        
+        // Теперь проверяем каждую FK отдельно
+        foreach (var fk in foreignKeys)
+        {
+            var refSchema = fk.Schema;
+            var refTable = fk.Table;
+            var refColumn = fk.Column;
+            
+            // Check if there are actually referencing rows
+            var checkSql = $"SELECT 1 FROM \"{refSchema}\".\"{refTable}\" WHERE \"{refColumn}\" = ANY($1) LIMIT 1";
+            
+            await using (var checkCmd = new NpgsqlCommand(checkSql, conn))
+            {
+                checkCmd.Parameters.AddWithValue("p1", pkValues.ToArray());
+                var checkResult = await checkCmd.ExecuteScalarAsync();
+                if (checkResult != null)
                 {
-                    checkCmd.Parameters.AddWithValue("p1", pkValues.ToArray());
-                    var checkResult = await checkCmd.ExecuteScalarAsync();
-                    if (checkResult != null)
-                    {
-                        result.HasForeignKeys = true;
-                        result.ReferencingTables.Add($"{refSchema}.{refTable}");
-                    }
+                    result.HasForeignKeys = true;
+                    result.ReferencingTables.Add($"{refSchema}.{refTable}");
                 }
             }
         }
@@ -476,15 +523,8 @@ public class DatabaseService : IDatabaseService
         }
 
         // Get the actual values from the row
-        var columnsa = string.Join(", ", pkColumns.Select(c => $"\"{c.Name}\""));
-        var selectSql = $"SELECT {columnsa}  FROM \"{schemaName}\".\"{tableName}\" WHERE {whereClause})";
-
-
-
-        //var columns = string.Join(", ", pkColumns.Select(c => $"\"{c.Name}\""));
-        //var selectSql = $"SELECT {columns} FROM \"{schemaName}\".\"{tableName}\" WHERE {whereClause}";
-
-
+        var columns = string.Join(", ", pkColumns.Select(c => $"\"{c.Name}\""));
+        var selectSql = $"SELECT {columns} FROM \"{schemaName}\".\"{tableName}\" WHERE {whereClause}";
 
         var pkValues = new List<object>();
         await using (var cmd = new NpgsqlCommand(selectSql, conn))
@@ -503,6 +543,8 @@ public class DatabaseService : IDatabaseService
             }
         }
 
+        // Сначала читаем все FK в память, чтобы избежать конфликта команд
+        var foreignKeys = new List<(string Schema, string Table, string Column, string ReferencedColumn)>();
         await using (var cmd = new NpgsqlCommand(fkQuery, conn))
         {
             cmd.Parameters.AddWithValue("p1", schemaName);
@@ -511,18 +553,28 @@ public class DatabaseService : IDatabaseService
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                var refSchema = reader.GetString(0);
-                var refTable = reader.GetString(1);
-                var refColumn = reader.GetString(2);
-                var referencedColumn = reader.GetString(3);
-                
-                var deleteSql = $"DELETE FROM \"{refSchema}\".\"{refTable}\" WHERE \"{refColumn}\" = ANY($1)";
-                
-                await using (var deleteCmd = new NpgsqlCommand(deleteSql, conn))
-                {
-                    deleteCmd.Parameters.AddWithValue("p1", pkValues.ToArray());
-                    await deleteCmd.ExecuteNonQueryAsync();
-                }
+                foreignKeys.Add((
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    reader.GetString(3)
+                ));
+            }
+        }
+
+        // Теперь выполняем удаление из каждой таблицы с FK
+        foreach (var fk in foreignKeys)
+        {
+            var refSchema = fk.Schema;
+            var refTable = fk.Table;
+            var refColumn = fk.Column;
+            
+            var deleteSql = $"DELETE FROM \"{refSchema}\".\"{refTable}\" WHERE \"{refColumn}\" = ANY($1)";
+            
+            await using (var deleteCmd = new NpgsqlCommand(deleteSql, conn))
+            {
+                deleteCmd.Parameters.AddWithValue("p1", pkValues.ToArray());
+                await deleteCmd.ExecuteNonQueryAsync();
             }
         }
 
