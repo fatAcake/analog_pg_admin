@@ -1,4 +1,4 @@
-const API_BASE_URL = '/api';
+const API_BASE_URL = 'http://localhost:5190/api';
 
 export const api = {
   async testConnection(connectionString) {

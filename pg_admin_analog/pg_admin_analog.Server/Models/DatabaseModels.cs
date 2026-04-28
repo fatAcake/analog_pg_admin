@@ -18,6 +18,7 @@ public class TableInfo
 
 public class CreateTableRequest
 {
+    public string ConnectionString { get; set; } = string.Empty;
     public string TableName { get; set; } = string.Empty;
     public string SchemaName { get; set; } = "public";
     public List<ColumnDefinition> Columns { get; set; } = new();
@@ -39,6 +40,7 @@ public class TableData
 
 public class SqlQueryRequest
 {
+    public string ConnectionString { get; set; } = string.Empty;
     public string Query { get; set; } = string.Empty;
 }
 

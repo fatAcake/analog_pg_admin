@@ -17,10 +17,6 @@
     <PackageReference Include="Npgsql" Version="8.0.5" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\pg_admin_analog.client\pg_admin_analog.client.esproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
-  </ItemGroup>
+
 
 </Project>
