@@ -320,7 +320,11 @@ public class DatabaseService : IDatabaseService
             // Попытка определить тип данных из значения
             if (kvp.Value != null && kvp.Value != DBNull.Value)
             {
-                param.NpgsqlDbType = (NpgsqlDbType)GetNpgsqlDbType(kvp.Value.GetType());
+                var dbType = GetNpgsqlDbType(kvp.Value.GetType());
+                if (dbType.HasValue)
+                {
+                    param.NpgsqlDbType = dbType.Value;
+                }
             }
             
             parameters.Add(param);
