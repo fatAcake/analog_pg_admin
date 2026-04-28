@@ -10,10 +10,29 @@ function TableManager({ connectionString }) {
   const [showCreateTable, setShowCreateTable] = useState(false);
   const [newTableName, setNewTableName] = useState('');
   const [columns, setColumns] = useState([{ name: '', dataType: 'INTEGER', isNullable: true, isPrimaryKey: false }]);
+  
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState(null);
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [primaryKeyColumns, setPrimaryKeyColumns] = useState([]);
+  
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editData, setEditData] = useState({});
+  
+  // Delete confirmation modal state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteCheckResult, setDeleteCheckResult] = useState(null);
 
   useEffect(() => {
     loadTables();
   }, [connectionString]);
+
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
 
   const loadTables = async () => {
     try {
@@ -33,6 +52,174 @@ function TableManager({ connectionString }) {
       setSelectedTable(table);
       const data = await api.getTableData(connectionString, table.schemaName, table.tableName);
       setTableData(data);
+      
+      // Load primary key columns for the table
+      const pkColumns = await api.getPrimaryKeyColumns(connectionString, table.schemaName, table.tableName);
+      setPrimaryKeyColumns(pkColumns);
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRowRightClick = (e, row, rowIndex) => {
+    e.preventDefault();
+    setSelectedRow({ row, rowIndex });
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+    });
+  };
+
+  const handleDeleteRow = async () => {
+    if (!selectedRow || !selectedTable) return;
+    
+    try {
+      setLoading(true);
+      
+      // Build WHERE clause from primary key values
+      const whereConditions = primaryKeyColumns.map(pk => {
+        const colIndex = tableData.columns.indexOf(pk.Name);
+        const value = selectedRow.row[colIndex];
+        if (value === null) {
+          return `"${pk.Name}" IS NULL`;
+        }
+        if (typeof value === 'string') {
+          return `"${pk.Name}" = '${value.replace(/'/g, "''")}'`;
+        }
+        return `"${pk.Name}" = ${value}`;
+      });
+      const whereClause = whereConditions.join(' AND ');
+      
+      // Check for foreign key constraints
+      const fkResult = await api.checkForeignKeys(connectionString, selectedTable.schemaName, selectedTable.tableName, whereClause);
+      
+      if (fkResult.hasForeignKeys) {
+        setDeleteCheckResult(fkResult);
+        setShowDeleteConfirm(true);
+      } else {
+        // No foreign keys, proceed with normal delete
+        await api.deleteData(connectionString, selectedTable.schemaName, selectedTable.tableName, whereClause);
+        setMessage({ type: 'success', text: 'Запись удалена' });
+        handleSelectTable(selectedTable); // Reload table data
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setLoading(false);
+      setContextMenu(null);
+    }
+  };
+
+  const handleDeleteCascade = async () => {
+    if (!selectedRow || !selectedTable) return;
+    
+    try {
+      setLoading(true);
+      
+      const whereConditions = primaryKeyColumns.map(pk => {
+        const colIndex = tableData.columns.indexOf(pk.Name);
+        const value = selectedRow.row[colIndex];
+        if (value === null) {
+          return `"${pk.Name}" IS NULL`;
+        }
+        if (typeof value === 'string') {
+          return `"${pk.Name}" = '${value.replace(/'/g, "''")}'`;
+        }
+        return `"${pk.Name}" = ${value}`;
+      });
+      const whereClause = whereConditions.join(' AND ');
+      
+      await api.deleteDataCascade(connectionString, selectedTable.schemaName, selectedTable.tableName, whereClause);
+      setMessage({ type: 'success', text: 'Запись и связанные записи удалены (CASCADE)' });
+      handleSelectTable(selectedTable);
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteRestrict = async () => {
+    if (!selectedRow || !selectedTable) return;
+    
+    try {
+      setLoading(true);
+      
+      const whereConditions = primaryKeyColumns.map(pk => {
+        const colIndex = tableData.columns.indexOf(pk.Name);
+        const value = selectedRow.row[colIndex];
+        if (value === null) {
+          return `"${pk.Name}" IS NULL`;
+        }
+        if (typeof value === 'string') {
+          return `"${pk.Name}" = '${value.replace(/'/g, "''")}'`;
+        }
+        return `"${pk.Name}" = ${value}`;
+      });
+      const whereClause = whereConditions.join(' AND ');
+      
+      await api.deleteDataRestrict(connectionString, selectedTable.schemaName, selectedTable.tableName, whereClause);
+      setMessage({ type: 'success', text: 'Запись удалена (RESTRICT)' });
+      handleSelectTable(selectedTable);
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditRow = () => {
+    if (!selectedRow || !selectedTable) return;
+    
+    const editValues = {};
+    tableData.columns.forEach((col, index) => {
+      editValues[col] = selectedRow.row[index];
+    });
+    
+    setEditData(editValues);
+    setShowEditModal(true);
+    setContextMenu(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedRow || !selectedTable) return;
+    
+    try {
+      setLoading(true);
+      
+      const updateData = {};
+      const unchangedData = {};
+      
+      tableData.columns.forEach((col, index) => {
+        if (editData[col] !== selectedRow.row[index]) {
+          updateData[col] = editData[col];
+        } else {
+          unchangedData[col] = selectedRow.row[index];
+        }
+      });
+      
+      // Build WHERE clause from original primary key values
+      const whereConditions = primaryKeyColumns.map(pk => {
+        const colIndex = tableData.columns.indexOf(pk.Name);
+        const value = selectedRow.row[colIndex];
+        if (value === null) {
+          return `"${pk.Name}" IS NULL`;
+        }
+        if (typeof value === 'string') {
+          return `"${pk.Name}" = '${value.replace(/'/g, "''")}'`;
+        }
+        return `"${pk.Name}" = ${value}`;
+      });
+      const whereClause = whereConditions.join(' AND ');
+      
+      await api.updateData(connectionString, selectedTable.schemaName, selectedTable.tableName, updateData, whereClause);
+      setMessage({ type: 'success', text: 'Запись обновлена' });
+      handleSelectTable(selectedTable);
+      setShowEditModal(false);
     } catch (error) {
       setMessage({ type: 'error', text: error.message });
     } finally {
@@ -211,7 +398,11 @@ function TableManager({ connectionString }) {
               </thead>
               <tbody>
                 {tableData.rows.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
+                  <tr 
+                    key={rowIndex} 
+                    onContextMenu={(e) => handleRowRightClick(e, row, rowIndex)}
+                    style={{ cursor: 'context-menu' }}
+                  >
                     {row.map((cell, cellIndex) => (
                       <td key={cellIndex}>{cell === null ? 'NULL' : String(cell)}</td>
                     ))}
@@ -219,6 +410,124 @@ function TableManager({ connectionString }) {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div 
+          className="context-menu" 
+          style={{ 
+            position: 'fixed', 
+            top: contextMenu.y, 
+            left: contextMenu.x,
+            zIndex: 1000,
+            backgroundColor: 'white',
+            border: '1px solid #ccc',
+            boxShadow: '2px 2px 5px rgba(0,0,0,0.2)',
+            minWidth: '150px'
+          }}
+        >
+          <button onClick={handleEditRow} className="context-menu-item" style={{ display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+            Изменить
+          </button>
+          <button onClick={handleDeleteRow} className="context-menu-item" style={{ display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+            Удалить
+          </button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && deleteCheckResult && (
+        <div className="modal-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1001
+        }}>
+          <div className="modal" style={{
+            backgroundColor: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            maxWidth: '500px',
+            width: '90%'
+          }}>
+            <h3>Подтверждение удаления</h3>
+            <p>Запись связана с другими таблицами:</p>
+            <ul>
+              {deleteCheckResult.referencingTables?.map((table, idx) => (
+                <li key={idx}>{table}</li>
+              ))}
+            </ul>
+            <p>Выберите способ удаления:</p>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={handleDeleteCascade} className="btn btn-warning">
+                Удалить каскадно (CASCADE)
+              </button>
+              <button onClick={handleDeleteRestrict} className="btn btn-danger">
+                Удалить рестриктно (RESTRICT)
+              </button>
+              <button onClick={() => setShowDeleteConfirm(false)} className="btn">
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="modal-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1001
+        }}>
+          <div className="modal" style={{
+            backgroundColor: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflow: 'auto'
+          }}>
+            <h3>Изменение записи</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {tableData.columns.map((col) => (
+                <div key={col}>
+                  <label style={{ display: 'block', marginBottom: '5px' }}>{col}:</label>
+                  <input
+                    type="text"
+                    value={editData[col] !== undefined ? String(editData[col]) : ''}
+                    onChange={(e) => setEditData({ ...editData, [col]: e.target.value })}
+                    className="form-control"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={handleSaveEdit} className="btn btn-primary">
+                Сохранить
+              </button>
+              <button onClick={() => setShowEditModal(false)} className="btn">
+                Отмена
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -211,6 +211,66 @@ public class DatabaseController : ControllerBase
             return StatusCode(500, new { Message = ex.Message });
         }
     }
+
+    [HttpPost("tables/{schemaName}/{tableName}/check-foreign-keys")]
+    public async Task<IActionResult> CheckForeignKeys([FromRoute] string schemaName, [FromRoute] string tableName, [FromBody] DeleteDataRequest request)
+    {
+        try
+        {
+            var result = await _databaseService.CheckForeignKeysAsync(request.ConnectionString, schemaName, tableName, request.WhereClause);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking foreign keys");
+            return StatusCode(500, new { Message = ex.Message });
+        }
+    }
+
+    [HttpPost("tables/{schemaName}/{tableName}/delete-cascade")]
+    public async Task<IActionResult> DeleteDataCascade([FromRoute] string schemaName, [FromRoute] string tableName, [FromBody] DeleteDataRequest request)
+    {
+        try
+        {
+            await _databaseService.DeleteDataCascadeAsync(request.ConnectionString, schemaName, tableName, request.WhereClause);
+            return Ok(new { Message = "Data deleted with cascade successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting data with cascade");
+            return StatusCode(500, new { Message = ex.Message });
+        }
+    }
+
+    [HttpPost("tables/{schemaName}/{tableName}/delete-restrict")]
+    public async Task<IActionResult> DeleteDataRestrict([FromRoute] string schemaName, [FromRoute] string tableName, [FromBody] DeleteDataRequest request)
+    {
+        try
+        {
+            await _databaseService.DeleteDataRestrictAsync(request.ConnectionString, schemaName, tableName, request.WhereClause);
+            return Ok(new { Message = "Data deleted with restrict successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting data with restrict");
+            return StatusCode(500, new { Message = ex.Message });
+        }
+    }
+
+    [HttpGet("tables/{schemaName}/{tableName}/primary-keys")]
+    public async Task<IActionResult> GetPrimaryKeyColumns([FromRoute] string schemaName, [FromRoute] string tableName, [FromQuery] string connectionString)
+    {
+        try
+        {
+            var columns = await _databaseService.GetPrimaryKeyColumnsAsync(connectionString, schemaName, tableName);
+            return Ok(columns);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting primary key columns");
+            return StatusCode(500, new { Message = ex.Message });
+        }
+    }
 }
 
 // Additional request models for the controller

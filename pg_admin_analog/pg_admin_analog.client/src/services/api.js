@@ -99,4 +99,36 @@ export const api = {
     });
     return response.json();
   },
+
+  async checkForeignKeys(connectionString, schemaName, tableName, whereClause) {
+    const response = await fetch(`${API_BASE_URL}/database/tables/${schemaName}/${tableName}/check-foreign-keys`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connectionString, whereClause }),
+    });
+    return response.json();
+  },
+
+  async deleteDataCascade(connectionString, schemaName, tableName, whereClause) {
+    const response = await fetch(`${API_BASE_URL}/database/tables/${schemaName}/${tableName}/delete-cascade`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connectionString, whereClause }),
+    });
+    return response.json();
+  },
+
+  async deleteDataRestrict(connectionString, schemaName, tableName, whereClause) {
+    const response = await fetch(`${API_BASE_URL}/database/tables/${schemaName}/${tableName}/delete-restrict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connectionString, whereClause }),
+    });
+    return response.json();
+  },
+
+  async getPrimaryKeyColumns(connectionString, schemaName, tableName) {
+    const response = await fetch(`${API_BASE_URL}/database/tables/${schemaName}/${tableName}/primary-keys?connectionString=${encodeURIComponent(connectionString)}`);
+    return response.json();
+  },
 };
