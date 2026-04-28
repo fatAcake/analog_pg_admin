@@ -314,18 +314,10 @@ public class DatabaseService : IDatabaseService
         {
             setParts.Add($"\"{kvp.Key}\" = ${paramIndex}");
             var value = kvp.Value ?? DBNull.Value;
-            var param = new NpgsqlParameter();
-            param.Value = value;
-            
-            // Попытка определить тип данных из значения
-            if (kvp.Value != null && kvp.Value != DBNull.Value)
+            var param = new NpgsqlParameter
             {
-                var dbType = GetNpgsqlDbType(kvp.Value.GetType());
-                if (dbType.HasValue)
-                {
-                    param.NpgsqlDbType = dbType.Value;
-                }
-            }
+                Value = value
+            };
             
             parameters.Add(param);
             paramIndex++;
