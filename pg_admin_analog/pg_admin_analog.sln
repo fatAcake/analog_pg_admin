@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37111.16 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "pg_admin_analog.client", "pg_admin_analog.client\pg_admin_analog.client.esproj", "{AE2F3EFD-90C6-49CD-470C-F563AA8DD764}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pg_admin_analog.Server", "pg_admin_analog.Server\pg_admin_analog.Server.csproj", "{F7EACCD0-D869-4594-B441-D33245C26DF6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AE2F3EFD-90C6-49CD-470C-F563AA8DD764}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE2F3EFD-90C6-49CD-470C-F563AA8DD764}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE2F3EFD-90C6-49CD-470C-F563AA8DD764}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{AE2F3EFD-90C6-49CD-470C-F563AA8DD764}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE2F3EFD-90C6-49CD-470C-F563AA8DD764}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE2F3EFD-90C6-49CD-470C-F563AA8DD764}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{F7EACCD0-D869-4594-B441-D33245C26DF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7EACCD0-D869-4594-B441-D33245C26DF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7EACCD0-D869-4594-B441-D33245C26DF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7EACCD0-D869-4594-B441-D33245C26DF6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2FDE34DD-EE5E-423F-B542-A70A4292ECEA}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,6 @@
+@pg_admin_analog.Server_HostAddress = http://localhost:5190
+
+GET {{pg_admin_analog.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
