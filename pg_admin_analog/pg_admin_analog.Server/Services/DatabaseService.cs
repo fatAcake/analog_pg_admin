@@ -19,6 +19,10 @@ public interface IDatabaseService
     Task InsertDataAsync(string connectionString, string schemaName, string tableName, Dictionary<string, object> data);
     Task UpdateDataAsync(string connectionString, string schemaName, string tableName, Dictionary<string, object> data, string whereClause);
     Task DeleteDataAsync(string connectionString, string schemaName, string tableName, string whereClause);
+    Task<List<ColumnDefinition>> GetPrimaryKeyColumnsAsync(string connectionString, string schemaName, string tableName);
+    Task<ForeignKeyCheckResult> CheckForeignKeysAsync(string connectionString, string schemaName, string tableName, string whereClause);
+    Task DeleteDataCascadeAsync(string connectionString, string schemaName, string tableName, string whereClause);
+    Task DeleteDataRestrictAsync(string connectionString, string schemaName, string tableName, string whereClause);
 }
 
 public class DatabaseService : IDatabaseService
@@ -321,5 +325,214 @@ public class DatabaseService : IDatabaseService
         
         await using var cmd = new NpgsqlCommand(sql, conn);
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task<List<ColumnDefinition>> GetPrimaryKeyColumnsAsync(string connectionString, string schemaName, string tableName)
+    {
+        var columns = new List<ColumnDefinition>();
+        
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync();
+        
+        await using var cmd = new NpgsqlCommand(@"
+            SELECT a.attname
+            FROM pg_index i
+            JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+            WHERE i.indrelid = $1::regclass AND i.indisprimary", 
+            conn);
+        
+        cmd.Parameters.AddWithValue($"\"{schemaName}\".\"{tableName}\"");
+        
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            columns.Add(new ColumnDefinition
+            {
+                Name = reader.GetString(0),
+                DataType = "",
+                IsNullable = false,
+                IsPrimaryKey = true
+            });
+        }
+        
+        return columns;
+    }
+
+    public async Task<ForeignKeyCheckResult> CheckForeignKeysAsync(string connectionString, string schemaName, string tableName, string whereClause)
+    {
+        var result = new ForeignKeyCheckResult { HasForeignKeys = false, ReferencingTables = new List<string>() };
+        
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync();
+        
+        // Get primary key values from the row(s) to be deleted
+        var pkColumns = await GetPrimaryKeyColumnsAsync(connectionString, schemaName, tableName);
+        if (pkColumns.Count == 0)
+        {
+            return result;
+        }
+
+        // Get the actual values from the row
+        var selectSql = $"SELECT {string.Join(\", \", pkColumns.Select(c => $\"\\\"{c.Name}\\\"\"))} FROM \"{schemaName}\".\"{tableName}\" WHERE {whereClause}";
+        
+        var pkValues = new List<object>();
+        await using (var cmd = new NpgsqlCommand(selectSql, conn))
+        {
+            await using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                for (int i = 0; i < pkColumns.Count; i++)
+                {
+                    pkValues.Add(reader.GetValue(i));
+                }
+            }
+            else
+            {
+                return result; // No rows found
+            }
+        }
+
+        // Find foreign keys referencing this table's primary key
+        var fkQuery = @"
+            SELECT 
+                tc.table_schema, 
+                tc.table_name,
+                kcu.column_name
+            FROM information_schema.table_constraints AS tc
+            JOIN information_schema.key_column_usage AS kcu
+                ON tc.constraint_name = kcu.constraint_name
+                AND tc.table_schema = kcu.table_schema
+            JOIN information_schema.constraint_column_usage AS ccu
+                ON ccu.constraint_name = tc.constraint_name
+                AND ccu.table_schema = tc.table_schema
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+            AND ccu.table_schema = @schemaName
+            AND ccu.table_name = @tableName
+            AND ccu.column_name = ANY(@pkColumns)";
+
+        await using (var cmd = new NpgsqlCommand(fkQuery, conn))
+        {
+            cmd.Parameters.AddWithValue("@schemaName", schemaName);
+            cmd.Parameters.AddWithValue("@tableName", tableName);
+            var pkColumnNames = pkColumns.Select(c => c.Name).ToArray();
+            cmd.Parameters.AddWithValue("@pkColumns", pkColumnNames);
+            
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var refSchema = reader.GetString(0);
+                var refTable = reader.GetString(1);
+                var refColumn = reader.GetString(2);
+                
+                // Check if there are actually referencing rows
+                var checkSql = $"SELECT 1 FROM \"{refSchema}\".\"{refTable}\" WHERE \"{refColumn}\" = ANY(@values) LIMIT 1";
+                
+                await using (var checkCmd = new NpgsqlCommand(checkSql, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@values", pkValues.ToArray());
+                    var checkResult = await checkCmd.ExecuteScalarAsync();
+                    if (checkResult != null)
+                    {
+                        result.HasForeignKeys = true;
+                        result.ReferencingTables.Add($"{refSchema}.{refTable}");
+                    }
+                }
+            }
+        }
+        
+        return result;
+    }
+
+    public async Task DeleteDataCascadeAsync(string connectionString, string schemaName, string tableName, string whereClause)
+    {
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync();
+        
+        // First delete from referencing tables
+        var fkQuery = @"
+            SELECT 
+                tc.table_schema, 
+                tc.table_name,
+                kcu.column_name,
+                ccu.column_name as referenced_column
+            FROM information_schema.table_constraints AS tc
+            JOIN information_schema.key_column_usage AS kcu
+                ON tc.constraint_name = kcu.constraint_name
+                AND tc.table_schema = kcu.table_schema
+            JOIN information_schema.constraint_column_usage AS ccu
+                ON ccu.constraint_name = tc.constraint_name
+                AND ccu.table_schema = tc.table_schema
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+            AND ccu.table_schema = @schemaName
+            AND ccu.table_name = @tableName";
+
+        var pkColumns = await GetPrimaryKeyColumnsAsync(connectionString, schemaName, tableName);
+        if (pkColumns.Count == 0)
+        {
+            throw new Exception("No primary key found for cascade delete");
+        }
+
+        // Get the actual values from the row
+        var selectSql = $"SELECT {string.Join(\", \", pkColumns.Select(c => $\"\\\"{c.Name}\\\"\"))} FROM \"{schemaName}\".\"{tableName}\" WHERE {whereClause}";
+        
+        var pkValues = new List<object>();
+        await using (var cmd = new NpgsqlCommand(selectSql, conn))
+        {
+            await using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                for (int i = 0; i < pkColumns.Count; i++)
+                {
+                    pkValues.Add(reader.GetValue(i));
+                }
+            }
+            else
+            {
+                return; // No rows found
+            }
+        }
+
+        await using (var cmd = new NpgsqlCommand(fkQuery, conn))
+        {
+            cmd.Parameters.AddWithValue("@schemaName", schemaName);
+            cmd.Parameters.AddWithValue("@tableName", tableName);
+            
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var refSchema = reader.GetString(0);
+                var refTable = reader.GetString(1);
+                var refColumn = reader.GetString(2);
+                var referencedColumn = reader.GetString(3);
+                
+                var deleteSql = $"DELETE FROM \"{refSchema}\".\"{refTable}\" WHERE \"{refColumn}\" = ANY(@values)";
+                
+                await using (var deleteCmd = new NpgsqlCommand(deleteSql, conn))
+                {
+                    deleteCmd.Parameters.AddWithValue("@values", pkValues.ToArray());
+                    await deleteCmd.ExecuteNonQueryAsync();
+                }
+            }
+        }
+
+        // Now delete from the main table
+        var sql = $"DELETE FROM \"{schemaName}\".\"{tableName}\" WHERE {whereClause}";
+        
+        await using var deleteMainCmd = new NpgsqlCommand(sql, conn);
+        await deleteMainCmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task DeleteDataRestrictAsync(string connectionString, string schemaName, string tableName, string whereClause)
+    {
+        // Check for foreign key constraints first
+        var fkResult = await CheckForeignKeysAsync(connectionString, schemaName, tableName, whereClause);
+        
+        if (fkResult.HasForeignKeys)
+        {
+            throw new Exception($"Cannot delete: record is referenced by other tables: {string.Join(\", \", fkResult.ReferencingTables)}");
+        }
+        
+        // If no foreign keys, proceed with normal delete
+        await DeleteDataAsync(connectionString, schemaName, tableName, whereClause);
     }
 }

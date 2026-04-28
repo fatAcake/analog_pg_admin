@@ -51,3 +51,9 @@ public class SqlQueryResponse
     public int RowsAffected { get; set; }
     public string? Message { get; set; }
 }
+
+public class ForeignKeyCheckResult
+{
+    public bool HasForeignKeys { get; set; }
+    public List<string> ReferencingTables { get; set; } = new();
+}
