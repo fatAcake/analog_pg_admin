@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import ConnectionForm from './components/ConnectionForm'
+import ConnectionList from './components/ConnectionList'
 import DatabaseManager from './components/DatabaseManager'
 import TableManager from './components/TableManager'
 import SqlQueryEditor from './components/SqlQueryEditor'
@@ -32,7 +33,7 @@ function App() {
           <h1>PostgreSQL Admin</h1>
         </header>
         <main className="app-main">
-          <ConnectionForm onConnect={handleConnect} />
+          <ConnectionList />
         </main>
       </div>
     )
