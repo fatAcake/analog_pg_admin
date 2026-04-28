@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import ConnectionForm from './components/ConnectionForm'
-import ConnectionList from './components/ConnectionList'
+
 import DatabaseManager from './components/DatabaseManager'
 import TableManager from './components/TableManager'
 import SqlQueryEditor from './components/SqlQueryEditor'
