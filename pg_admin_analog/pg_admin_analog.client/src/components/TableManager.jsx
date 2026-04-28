@@ -80,15 +80,15 @@ function TableManager({ connectionString }) {
       
       // Build WHERE clause from primary key values
       const whereConditions = primaryKeyColumns.map(pk => {
-        const colIndex = tableData.columns.indexOf(pk.Name);
+        const colIndex = tableData.columns.indexOf(pk.name);
         const value = selectedRow.row[colIndex];
         if (value === null) {
-          return `"${pk.Name}" IS NULL`;
+          return `"${pk.name}" IS NULL`;
         }
         if (typeof value === 'string') {
-          return `"${pk.Name}" = '${value.replace(/'/g, "''")}'`;
+          return `"${pk.name}" = '${value.replace(/'/g, "''")}'`;
         }
-        return `"${pk.Name}" = ${value}`;
+        return `"${pk.name}" = ${value}`;
       });
       const whereClause = whereConditions.join(' AND ');
       
@@ -119,15 +119,15 @@ function TableManager({ connectionString }) {
       setLoading(true);
       
       const whereConditions = primaryKeyColumns.map(pk => {
-        const colIndex = tableData.columns.indexOf(pk.Name);
+        const colIndex = tableData.columns.indexOf(pk.name);
         const value = selectedRow.row[colIndex];
         if (value === null) {
-          return `"${pk.Name}" IS NULL`;
+          return `"${pk.name}" IS NULL`;
         }
         if (typeof value === 'string') {
-          return `"${pk.Name}" = '${value.replace(/'/g, "''")}'`;
+          return `"${pk.name}" = '${value.replace(/'/g, "''")}'`;
         }
-        return `"${pk.Name}" = ${value}`;
+        return `"${pk.name}" = ${value}`;
       });
       const whereClause = whereConditions.join(' AND ');
       
@@ -149,15 +149,15 @@ function TableManager({ connectionString }) {
       setLoading(true);
       
       const whereConditions = primaryKeyColumns.map(pk => {
-        const colIndex = tableData.columns.indexOf(pk.Name);
+        const colIndex = tableData.columns.indexOf(pk.name);
         const value = selectedRow.row[colIndex];
         if (value === null) {
-          return `"${pk.Name}" IS NULL`;
+          return `"${pk.name}" IS NULL`;
         }
         if (typeof value === 'string') {
-          return `"${pk.Name}" = '${value.replace(/'/g, "''")}'`;
+          return `"${pk.name}" = '${value.replace(/'/g, "''")}'`;
         }
-        return `"${pk.Name}" = ${value}`;
+        return `"${pk.name}" = ${value}`;
       });
       const whereClause = whereConditions.join(' AND ');
       
@@ -204,15 +204,15 @@ function TableManager({ connectionString }) {
       
       // Build WHERE clause from original primary key values
       const whereConditions = primaryKeyColumns.map(pk => {
-        const colIndex = tableData.columns.indexOf(pk.Name);
+        const colIndex = tableData.columns.indexOf(pk.name);
         const value = selectedRow.row[colIndex];
         if (value === null) {
-          return `"${pk.Name}" IS NULL`;
+          return `"${pk.name}" IS NULL`;
         }
         if (typeof value === 'string') {
-          return `"${pk.Name}" = '${value.replace(/'/g, "''")}'`;
+          return `"${pk.name}" = '${value.replace(/'/g, "''")}'`;
         }
-        return `"${pk.Name}" = ${value}`;
+        return `"${pk.name}" = ${value}`;
       });
       const whereClause = whereConditions.join(' AND ');
       

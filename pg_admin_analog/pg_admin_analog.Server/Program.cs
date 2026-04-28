@@ -1,9 +1,14 @@
+using System.Text.Json.Serialization;
 using pg_admin_analog.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
 builder.Services.AddOpenApi();
 builder.Services.AddScoped<IDatabaseService, DatabaseService>();
 
