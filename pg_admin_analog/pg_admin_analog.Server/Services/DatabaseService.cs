@@ -1,5 +1,6 @@
 using System.Data;
 using Npgsql;
+using NpgsqlTypes;
 using pg_admin_analog.Server.Models;
 
 namespace pg_admin_analog.Server.Services;
@@ -318,11 +319,7 @@ public class DatabaseService : IDatabaseService
             // Попытка определить тип данных из значения
             if (kvp.Value != null && kvp.Value != DBNull.Value)
             {
-                var dbType = GetNpgsqlDbType(kvp.Value.GetType());
-                if (dbType.HasValue)
-                {
-                    param.NpgsqlDbType = dbType.Value;
-                }
+                param.NpgsqlDbType = (NpgsqlDbType)GetNpgsqlDbType(kvp.Value.GetType());
             }
             
             parameters.Add(param);
