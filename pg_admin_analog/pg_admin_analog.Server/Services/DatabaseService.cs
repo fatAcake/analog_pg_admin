@@ -313,13 +313,56 @@ public class DatabaseService : IDatabaseService
         foreach (var kvp in data)
         {
             setParts.Add($"\"{kvp.Key}\" = ${paramIndex}");
-            var value = kvp.Value ?? DBNull.Value;
-            var param = new NpgsqlParameter
-            {
-                Value = value
-            };
             
-            parameters.Add(param);
+            var value = kvp.Value;
+            if (value == null)
+            {
+                parameters.Add(new NpgsqlParameter { Value = DBNull.Value });
+            }
+            else
+            {
+                var strValue = value.ToString();
+                // Если значение - строка в формате JSON (обернута в кавычки), извлекаем чистое значение
+                if (value is string s && s.Length >= 2 && s.StartsWith("\"") && s.EndsWith("\""))
+                {
+                    // Это JSON-строка, нужно распаковать её
+                    try
+                    {
+                        var unpacked = System.Text.Json.JsonSerializer.Deserialize<string>(s);
+                        parameters.Add(new NpgsqlParameter { Value = unpacked });
+                    }
+                    catch
+                    {
+                        // Если не удалось распарсить как JSON-строку, используем как есть
+                        parameters.Add(new NpgsqlParameter { Value = value });
+                    }
+                }
+                else
+                {
+                    // Пытаемся определить тип и сконвертировать значение
+                    if (int.TryParse(strValue, out int intValue))
+                    {
+                        parameters.Add(new NpgsqlParameter { Value = intValue });
+                    }
+                    else if (long.TryParse(strValue, out long longValue))
+                    {
+                        parameters.Add(new NpgsqlParameter { Value = longValue });
+                    }
+                    else if (double.TryParse(strValue, out double doubleValue))
+                    {
+                        parameters.Add(new NpgsqlParameter { Value = doubleValue });
+                    }
+                    else if (bool.TryParse(strValue, out bool boolValue))
+                    {
+                        parameters.Add(new NpgsqlParameter { Value = boolValue });
+                    }
+                    else
+                    {
+                        parameters.Add(new NpgsqlParameter { Value = value });
+                    }
+                }
+            }
+            
             paramIndex++;
         }
         
