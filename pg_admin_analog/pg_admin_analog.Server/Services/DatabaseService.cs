@@ -373,24 +373,25 @@ public class DatabaseService : IDatabaseService
         }
 
         // Get the actual values from the row
-        var selectSql = $"SELECT {string.Join(\", \", pkColumns.Select(c => $\"\\\"{c.Name}\\\"\"))} FROM \"{schemaName}\".\"{tableName}\" WHERE {whereClause}";
-        
+        var columns = string.Join(", ", pkColumns.Select(c => $"\"{c.Name}\""));
+        var selectSql = $"SELECT {columns} FROM \"{schemaName}\".\"{tableName}\" WHERE {whereClause}";
+
         var pkValues = new List<object>();
-        await using (var cmd = new NpgsqlCommand(selectSql, conn))
-        {
-            await using var reader = await cmd.ExecuteReaderAsync();
-            if (await reader.ReadAsync())
+            await using (var cmd = new NpgsqlCommand(selectSql, conn))
             {
-                for (int i = 0; i < pkColumns.Count; i++)
+                await using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
                 {
-                    pkValues.Add(reader.GetValue(i));
+                    for (int i = 0; i < pkColumns.Count; i++)
+                    {
+                        pkValues.Add(reader.GetValue(i));
+                    }
+                }
+                else
+                {
+                    return result; // No rows found
                 }
             }
-            else
-            {
-                return result; // No rows found
-            }
-        }
 
         // Find foreign keys referencing this table's primary key
         var fkQuery = @"
@@ -473,8 +474,16 @@ public class DatabaseService : IDatabaseService
         }
 
         // Get the actual values from the row
-        var selectSql = $"SELECT {string.Join(\", \", pkColumns.Select(c => $\"\\\"{c.Name}\\\"\"))} FROM \"{schemaName}\".\"{tableName}\" WHERE {whereClause}";
-        
+        var columnsa = string.Join(", ", pkColumns.Select(c => $"\"{c.Name}\""));
+        var selectSql = $"SELECT {columnsa}  FROM \"{schemaName}\".\"{tableName}\" WHERE {whereClause})";
+
+
+
+        //var columns = string.Join(", ", pkColumns.Select(c => $"\"{c.Name}\""));
+        //var selectSql = $"SELECT {columns} FROM \"{schemaName}\".\"{tableName}\" WHERE {whereClause}";
+
+
+
         var pkValues = new List<object>();
         await using (var cmd = new NpgsqlCommand(selectSql, conn))
         {
@@ -529,7 +538,7 @@ public class DatabaseService : IDatabaseService
         
         if (fkResult.HasForeignKeys)
         {
-            throw new Exception($"Cannot delete: record is referenced by other tables: {string.Join(\", \", fkResult.ReferencingTables)}");
+            throw new Exception($"Cannot delete: record is referenced by other tables: {string.Join(", ", fkResult.ReferencingTables)}");
         }
         
         // If no foreign keys, proceed with normal delete
