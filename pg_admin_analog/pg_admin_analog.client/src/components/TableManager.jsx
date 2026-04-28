@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 
-function TableManager({ connectionString }) {
+function TableManager({ connectionString, onTableSelect }) {
   const [tables, setTables] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
   const [tableData, setTableData] = useState(null);
@@ -56,6 +56,11 @@ function TableManager({ connectionString }) {
       // Load primary key columns for the table
       const pkColumns = await api.getPrimaryKeyColumns(connectionString, table.schemaName, table.tableName);
       setPrimaryKeyColumns(pkColumns);
+      
+      // Notify parent component about table selection
+      if (onTableSelect) {
+        onTableSelect(table);
+      }
     } catch (error) {
       setMessage({ type: 'error', text: error.message });
     } finally {

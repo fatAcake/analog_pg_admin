@@ -1,1 +1,1 @@
-Nothing should be ignored since only a C# source file was modified and no build artifacts, dependencies, or temporary files were detected in the changes.
+Nothing needs to be added to .gitignore since the only modified file is a source code file (.jsx) and there are no build artifacts, dependencies, or temporary files in the changes.
