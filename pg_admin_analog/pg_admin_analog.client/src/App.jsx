@@ -1,121 +1,103 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
 import './App.css'
+import ConnectionForm from './components/ConnectionForm'
+import DatabaseManager from './components/DatabaseManager'
+import TableManager from './components/TableManager'
+import SqlQueryEditor from './components/SqlQueryEditor'
+import DataOperations from './components/DataOperations'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [connectionString, setConnectionString] = useState('')
+  const [isConnected, setIsConnected] = useState(false)
+  const [selectedTable, setSelectedTable] = useState(null)
+  const [activeTab, setActiveTab] = useState('tables')
+
+  const handleConnect = (connStr) => {
+    setConnectionString(connStr)
+    setIsConnected(true)
+  }
+
+  const handleDatabaseSelect = (newConnStr) => {
+    setConnectionString(newConnStr)
+  }
+
+  const handleTableSelect = (table) => {
+    setSelectedTable(table)
+  }
+
+  if (!isConnected) {
+    return (
+      <div className="app">
+        <header className="app-header">
+          <h1>PostgreSQL Admin</h1>
+        </header>
+        <main className="app-main">
+          <ConnectionForm onConnect={handleConnect} />
+        </main>
+      </div>
+    )
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
+    <div className="app">
+      <header className="app-header">
+        <h1>PostgreSQL Admin</h1>
+        <button onClick={() => setIsConnected(false)} className="btn btn-secondary">
+          Отключиться
         </button>
-      </section>
+      </header>
 
-      <div className="ticks"></div>
+      <nav className="app-nav">
+        <button 
+          className={activeTab === 'tables' ? 'active' : ''}
+          onClick={() => setActiveTab('tables')}
+        >
+          Таблицы
+        </button>
+        <button 
+          className={activeTab === 'query' ? 'active' : ''}
+          onClick={() => setActiveTab('query')}
+        >
+          SQL Запрос
+        </button>
+        <button 
+          className={activeTab === 'data' ? 'active' : ''}
+          onClick={() => setActiveTab('data')}
+          disabled={!selectedTable}
+        >
+          Данные
+        </button>
+      </nav>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      <main className="app-main">
+        <div className="sidebar">
+          <DatabaseManager 
+            connectionString={connectionString} 
+            onDatabaseSelect={handleDatabaseSelect}
+          />
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        <div className="content">
+          {activeTab === 'tables' && (
+            <TableManager 
+              connectionString={connectionString}
+              onTableSelect={handleTableSelect}
+            />
+          )}
+          
+          {activeTab === 'query' && (
+            <SqlQueryEditor connectionString={connectionString} />
+          )}
+          
+          {activeTab === 'data' && selectedTable && (
+            <DataOperations 
+              connectionString={connectionString}
+              selectedTable={selectedTable}
+            />
+          )}
+        </div>
+      </main>
+    </div>
   )
 }
 
