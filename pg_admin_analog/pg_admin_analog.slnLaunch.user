@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Новый профиль",
+    "Projects": [
+      {
+        "Path": "pg_admin_analog.Server\\pg_admin_analog.Server.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "pg_admin_analog.client\\pg_admin_analog.client.esproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

@@ -1,0 +1,1 @@
+C:\Users\Startsoft\Source\Repos\analog_pg_admin\pg_admin_analog\pg_admin_analog.client\obj\Debug\pg_admin_analog.client.esproj.CoreCompileInputs.cache

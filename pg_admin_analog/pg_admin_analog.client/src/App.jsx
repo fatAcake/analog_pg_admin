@@ -32,8 +32,8 @@ function App() {
         <header className="app-header">
           <h1>PostgreSQL Admin</h1>
         </header>
-        <main className="app-main">
-          <ConnectionList />
+            <main className="app-main">
+           <ConnectionForm onConnect={handleConnect} />
         </main>
       </div>
     )
